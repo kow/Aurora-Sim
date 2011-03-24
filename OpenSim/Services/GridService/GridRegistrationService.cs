@@ -323,6 +323,14 @@ namespace OpenSim.Services.GridService
 
             public void SetUrls(string[] urls)
             {
+                for (int i = 0; i < urls.Length; i++)
+                {
+                    //Remove any ports people may have added
+                    urls[i] = urls[i].Replace ("http://", "");
+                    urls[i] = urls[i].Split (':')[0];
+                    //Readd the http://
+                    urls[i] = "http://" + urls[i];
+                }
                 m_urls = new List<string>(urls);
             }
 
