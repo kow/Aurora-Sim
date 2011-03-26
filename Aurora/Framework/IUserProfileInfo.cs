@@ -209,15 +209,6 @@ namespace Aurora.Framework
         /// UUID - target agent
         /// string - notes
         public OSDMap Notes = new OSDMap();
-        /// <summary>
-        /// The picks of the user
-        /// </summary>
-        public OSDMap Picks = new OSDMap();
-
-        /// <summary>
-        /// All the classifieds of the user
-        /// </summary>
-        public OSDMap Classifieds = new OSDMap();
 
         public enum ProfileFlags : int
         {
@@ -273,8 +264,6 @@ namespace Aurora.Framework
                 map.Add("MembershipGroup", OSD.FromString(MembershipGroup));
             }
 
-            map.Add("Classifieds", OSD.FromString(OSDParser.SerializeJsonString(Classifieds)));
-            map.Add("Picks", OSD.FromString(OSDParser.SerializeJsonString(Picks)));
             map.Add("Notes", OSD.FromString(OSDParser.SerializeJsonString(Notes)));
             
             return map;
@@ -294,24 +283,6 @@ namespace Aurora.Framework
             Interests.CanDoText = map["CanDoText"].AsString();
             Interests.Languages = map["Languages"].AsString();
             //End interests
-
-            try
-            {
-                if (map.ContainsKey("Classifieds"))
-                    Classifieds = (OSDMap)OSDParser.DeserializeJson(map["Classifieds"].AsString());
-            }
-            catch
-            {
-            }
-
-            try
-            {
-                if (map.ContainsKey("Picks"))
-                Picks = (OSDMap)OSDParser.DeserializeJson(map["Picks"].AsString());
-            }
-            catch
-            {
-            }
 
             try
             {

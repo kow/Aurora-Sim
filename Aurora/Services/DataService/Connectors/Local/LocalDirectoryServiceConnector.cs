@@ -500,16 +500,16 @@ namespace Aurora.Services.DataService
                 classifiedClause = " and Category = '" + category + "'";
 
             whereClause = " Name LIKE '%" + queryText + "%'" + classifiedClause + " LIMIT " + StartQuery.ToString() + ",50 ";
-            List<string> retVal = GD.Query(whereClause, "profileclassifieds", "*");
+            List<string> retVal = GD.Query (whereClause, "userclassifieds", "*");
             if (retVal.Count == 0)
                 return Data.ToArray();
 
             DirClassifiedReplyData replyData = null;
-            for (int i = 0; i < retVal.Count; i += 5)
+            for (int i = 0; i < retVal.Count; i += 6)
             {
                 //Pull the classified out of OSD
                 Classified classified = new Classified();
-                classified.FromOSD((OSDMap)OSDParser.DeserializeJson(retVal[i + 4]));
+                classified.FromOSD((OSDMap)OSDParser.DeserializeJson(retVal[i + 5]));
 
                 replyData = new DirClassifiedReplyData();
                 replyData.classifiedFlags = classified.ClassifiedFlags;
@@ -572,66 +572,20 @@ namespace Aurora.Services.DataService
         public Classified[] GetClassifiedsInRegion(string regionName)
         {
             List<Classified> Classifieds = new List<Classified>();
-            List<string> retVal = GD.Query("SimName", regionName, "profileclassifieds", "*");
+            List<string> retVal = GD.Query ("SimName", regionName, "userclassifieds", "*");
             
             if (retVal.Count == 0)
                 return Classifieds.ToArray();
             
             Classified classified = new Classified();
-            for (int i = 0; i < retVal.Count; i += 5)
+            for (int i = 0; i < retVal.Count; i += 6)
             {
                 //Pull the classified out of OSD
-                classified.FromOSD((OSDMap)OSDParser.DeserializeJson(retVal[i + 4]));
+                classified.FromOSD((OSDMap)OSDParser.DeserializeJson(retVal[i + 5]));
                 Classifieds.Add(classified);
                 classified = new Classified();
             }
             return Classifieds.ToArray();
-        }
-
-        /// <summary>
-        /// Add classifieds to the search database
-        /// LOCAL Only, called by the profile service
-        /// </summary>
-        /// <param name="dictionary">objects of the dictionary are OSDMaps made from Classified</param>
-        public void AddClassifieds(OSDMap map)
-        {
-            //Add a dictionary of classifieds
-            foreach (OSD o in map.Values)
-            {
-                //Pull out the OSD map and make it into a classified
-                OSDMap classifiedmap = (OSDMap)o;
-                Classified c = new Classified();
-                c.FromOSD(classifiedmap);
-                List<object> Values = new List<object>();
-                Values.Add(c.Name);
-                Values.Add(c.Category);
-                Values.Add(c.SimName);
-                Values.Add(c.ClassifiedUUID);
-                Values.Add(OSDParser.SerializeJsonString(o));
-                GD.Insert("profileclassifieds", Values.ToArray());
-            }
-        }
-
-        /// <summary>
-        /// Remove classifieds from the search database
-        /// LOCAL Only, called by the profile service
-        /// </summary>
-        /// <param name="dictionary">objects of the dictionary are OSDMaps made from Classified</param>
-        public void RemoveClassifieds(OSDMap map)
-        {
-            //Remove all the UUIDs in the given dictionary from search
-            foreach (OSD o in map.Values)
-            {
-                //Pull out the OSDMaps
-                OSDMap classifiedmap = (OSDMap)o;
-                Classified c = new Classified();
-                c.FromOSD(classifiedmap);
-                List<string> Keys = new List<string>();
-                Keys.Add("ClassifiedUUID");
-                List<object> Values = new List<object>();
-                Values.Add(c.ClassifiedUUID);
-                GD.Delete("profileclassifieds", Keys.ToArray(), Values.ToArray());
-            }
         }
     }
 }

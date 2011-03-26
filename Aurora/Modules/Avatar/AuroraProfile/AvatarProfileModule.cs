@@ -212,17 +212,12 @@ namespace Aurora.Modules
                 return;
 
             IClientAPI remoteClient = (IClientAPI)sender;
-            Dictionary<UUID, string> classifieds = new Dictionary<UUID, string>();
             UUID requestedUUID = new UUID(args[0]);
 
-            IUserProfileInfo profile = ProfileFrontend.GetUserProfile(requestedUUID);
-            if (profile == null)
-                return;
-            foreach (object classified in profile.Classifieds.Values)
+            Dictionary<UUID, string> classifieds = new Dictionary<UUID, string> ();
+            foreach (Classified classified in ProfileFrontend.GetClassifieds (requestedUUID))
             {
-                Classified Classified = new Classified();
-                Classified.FromOSD((OSDMap)classified);
-                classifieds.Add(Classified.ClassifiedUUID, Classified.Name);
+                classifieds.Add (classified.ClassifiedUUID, classified.Name);
             }
 
             remoteClient.SendAvatarClassifiedReply(requestedUUID, classifieds);        
@@ -230,27 +225,16 @@ namespace Aurora.Modules
 
         public void ClassifiedInfoRequest(UUID queryClassifiedID, IClientAPI remoteClient)
         {
-            IUserProfileInfo info = ProfileFrontend.GetUserProfile(remoteClient.AgentId);
-            if (info == null)
+            Classified classified = ProfileFrontend.GetClassified (queryClassifiedID);
+            if (classified == null || classified.CreatorUUID == UUID.Zero)
                 return;
-            if (info.Classifieds.ContainsKey(queryClassifiedID.ToString()))
-            {
-                Classified classified = new Classified();
-                classified.FromOSD((OSDMap)info.Classifieds[queryClassifiedID.ToString()]);
-                remoteClient.SendClassifiedInfoReply(queryClassifiedID, classified.CreatorUUID, classified.CreationDate, classified.ExpirationDate, classified.Category, classified.Name, classified.Description, classified.ParcelUUID, classified.ParentEstate, classified.SnapshotUUID, classified.SimName, classified.GlobalPos, classified.ParcelName, classified.ClassifiedFlags, classified.PriceForListing);
-            }
+            remoteClient.SendClassifiedInfoReply(queryClassifiedID, classified.CreatorUUID, classified.CreationDate, classified.ExpirationDate, classified.Category, classified.Name, classified.Description, classified.ParcelUUID, classified.ParentEstate, classified.SnapshotUUID, classified.SimName, classified.GlobalPos, classified.ParcelName, classified.ClassifiedFlags, classified.PriceForListing);
         }
         
         public void ClassifiedInfoUpdate(UUID queryclassifiedID, uint queryCategory, string queryName, string queryDescription, UUID queryParcelID,
                                          uint queryParentEstate, UUID querySnapshotID, Vector3 queryGlobalPos, byte queryclassifiedFlags,
                                          int queryclassifiedPrice, IClientAPI remoteClient)
         {
-            //Security check
-            IUserProfileInfo info = ProfileFrontend.GetUserProfile(remoteClient.AgentId);
-
-            if (info == null)
-                return;
-
             IScenePresence p = GetRegionUserIsIn(remoteClient.AgentId).GetScenePresence(remoteClient.AgentId);
 
             if(p == null)
@@ -264,16 +248,6 @@ namespace Aurora.Modules
                     remoteClient.SendAlertMessage("You do not have enough money to complete this upload.");
                     return;
                 }
-            }
-
-            if (info.Classifieds.ContainsKey(queryclassifiedID.ToString()))
-            {
-                Classified oldClassified = new Classified();
-                oldClassified.FromOSD((OSDMap)info.Classifieds[queryclassifiedID.ToString()]);
-                if (oldClassified.CreatorUUID != remoteClient.AgentId)
-                    return;
-
-                info.Classifieds.Remove(queryclassifiedID.ToString());
             }
 
             UUID creatorUUID = remoteClient.AgentId;
@@ -322,45 +296,19 @@ namespace Aurora.Modules
             classified.ClassifiedFlags = classifiedFlags;
             classified.PriceForListing = classifiedPrice;
 
-            info.Classifieds.Add(classified.ClassifiedUUID.ToString(), classified.ToOSD());
-            ProfileFrontend.UpdateUserProfile(info);
+            ProfileFrontend.AddClassified (classified);
         }
         
         public void ClassifiedDelete(UUID queryClassifiedID, IClientAPI remoteClient)
         {
-            //Security check
-            IUserProfileInfo info = ProfileFrontend.GetUserProfile(remoteClient.AgentId);
-
-            if (info == null)
-                return;
-            if (info.Classifieds.ContainsKey(queryClassifiedID.ToString()))
-            {
-                Classified oldClassified = new Classified();
-                oldClassified.FromOSD((OSDMap)info.Classifieds[queryClassifiedID.ToString()]);
-                if (oldClassified.CreatorUUID != remoteClient.AgentId)
-                    return;
-
-                info.Classifieds.Remove(queryClassifiedID.ToString());
-                ProfileFrontend.UpdateUserProfile(info);
-            }
+            ProfileFrontend.RemoveClassified (queryClassifiedID);
         }
         
         public void GodClassifiedDelete(UUID queryClassifiedID, IClientAPI remoteClient)
         {
             if (GetRegionUserIsIn(remoteClient.AgentId).Permissions.IsGod(remoteClient.AgentId))
             {
-                IUserProfileInfo info = ProfileFrontend.GetUserProfile(remoteClient.AgentId);
-
-                if (info == null)
-                    return;
-                if (info.Classifieds.ContainsKey(queryClassifiedID.ToString()))
-                {
-                    Classified oldClassified = new Classified();
-                    oldClassified.FromOSD((OSDMap)info.Classifieds[queryClassifiedID.ToString()]);
-
-                    info.Classifieds.Remove(queryClassifiedID.ToString());
-                    ProfileFrontend.UpdateUserProfile(info);
-                }
+                ProfileFrontend.RemoveClassified (queryClassifiedID);
             }
         }
         
@@ -377,14 +325,8 @@ namespace Aurora.Modules
             Dictionary<UUID, string> picks = new Dictionary<UUID, string>();
             UUID requestedUUID = new UUID(args[0]);
 
-            IUserProfileInfo profile = ProfileFrontend.GetUserProfile(requestedUUID);
-
-            if (profile == null)
-                return;
-            foreach (OSD pick in profile.Picks.Values)
+            foreach (ProfilePickInfo Pick in ProfileFrontend.GetPicks(requestedUUID))
             {
-                ProfilePickInfo Pick = new ProfilePickInfo();
-                Pick.FromOSD((OSDMap)pick);
                 picks.Add(Pick.PickUUID, Pick.Name);
             }
             remoteClient.SendAvatarPicksReply(requestedUUID, picks);
@@ -398,40 +340,29 @@ namespace Aurora.Modules
             IClientAPI remoteClient = (IClientAPI)sender;
             UUID PickUUID = UUID.Parse(args[1]);
 
-            IUserProfileInfo info = ProfileFrontend.GetUserProfile(remoteClient.AgentId);
-
-            if (info == null)
-                return;
-            if (info.Picks.ContainsKey(PickUUID.ToString()))
-            {
-                ProfilePickInfo pick = new ProfilePickInfo();
-                pick.FromOSD((OSDMap)info.Picks[PickUUID.ToString()]);
+            ProfilePickInfo pick = ProfileFrontend.GetPick (PickUUID);
+            if(pick != null)
                 remoteClient.SendPickInfoReply(pick.PickUUID, pick.CreatorUUID, pick.TopPick == 1 ? true : false, pick.ParcelUUID, pick.Name, pick.Description, pick.SnapshotUUID, pick.User, pick.OriginalName, pick.SimName, pick.GlobalPos, pick.SortOrder, pick.Enabled == 1 ? true : false);
-            }
         }
 
-        public void PickInfoUpdate(IClientAPI remoteClient, UUID pickID, UUID creatorID, bool topPick, string name, string desc, UUID snapshotID, int sortOrder, bool enabled, Vector3d globalPos)
+        public void PickInfoUpdate (IClientAPI remoteClient, UUID pickID, UUID creatorID, bool topPick, string name, string desc, UUID snapshotID, int sortOrder, bool enabled, Vector3d globalPos)
         {
-            IUserProfileInfo info = ProfileFrontend.GetUserProfile(remoteClient.AgentId);
-            if (info == null)
-                return;
-
-            IScenePresence p = GetRegionUserIsIn(remoteClient.AgentId).GetScenePresence(remoteClient.AgentId);
+            IScenePresence p = GetRegionUserIsIn (remoteClient.AgentId).GetScenePresence (remoteClient.AgentId);
 
             UUID parceluuid = p.CurrentParcelUUID;
             string user = "(unknown)";
             string OrigionalName = "(unknown)";
 
-            Vector3 pos_global = new Vector3(globalPos);
+            Vector3 pos_global = new Vector3 (globalPos);
 
-            IParcelManagementModule parcelManagement = GetRegionUserIsIn(remoteClient.AgentId).RequestModuleInterface<IParcelManagementModule>();
+            IParcelManagementModule parcelManagement = GetRegionUserIsIn (remoteClient.AgentId).RequestModuleInterface<IParcelManagementModule> ();
             if (parcelManagement != null)
             {
-                ILandObject targetlandObj = parcelManagement.GetLandObject(pos_global.X / Constants.RegionSize, pos_global.Y / Constants.RegionSize);
+                ILandObject targetlandObj = parcelManagement.GetLandObject (pos_global.X / Constants.RegionSize, pos_global.Y / Constants.RegionSize);
 
                 if (targetlandObj != null)
                 {
-                    UserAccount parcelOwner = GetRegionUserIsIn(remoteClient.AgentId).UserAccountService.GetUserAccount(UUID.Zero, targetlandObj.LandData.OwnerID);
+                    UserAccount parcelOwner = GetRegionUserIsIn (remoteClient.AgentId).UserAccountService.GetUserAccount (UUID.Zero, targetlandObj.LandData.OwnerID);
                     if (parcelOwner != null)
                         user = parcelOwner.Name;
 
@@ -441,84 +372,35 @@ namespace Aurora.Modules
                 }
             }
 
-            if (!info.Picks.ContainsKey(pickID.ToString()))
-            {
-                ProfilePickInfo values = new ProfilePickInfo();
-                values.PickUUID = pickID;
-                values.CreatorUUID = creatorID;
-                values.TopPick = topPick ? 1 : 0;
-                values.ParcelUUID = parceluuid;
-                values.Name = name;
-                values.Description = desc;
-                values.SnapshotUUID = snapshotID;
-                values.User = user;
-                values.OriginalName = OrigionalName;
-                values.SimName = remoteClient.Scene.RegionInfo.RegionName;
-                values.GlobalPos = pos_global;
-                values.SortOrder = sortOrder;
-                values.Enabled = enabled ? 1 : 0;
-                info.Picks.Add(pickID.ToString(), values.ToOSD());
-            }
-            else
-            {
-                ProfilePickInfo oldpick = new ProfilePickInfo();
-                oldpick.FromOSD((OSDMap)info.Picks[pickID.ToString()]);
-                //Security check
-                if (oldpick.CreatorUUID != remoteClient.AgentId)
-                    return;
+            ProfilePickInfo pick = new ProfilePickInfo ();
+            pick.PickUUID = pickID;
+            pick.CreatorUUID = creatorID;
+            pick.TopPick = topPick ? 1 : 0;
+            pick.ParcelUUID = parceluuid;
+            pick.Name = name;
+            pick.Description = desc;
+            pick.SnapshotUUID = snapshotID;
+            pick.User = user;
+            pick.OriginalName = OrigionalName;
+            pick.SimName = remoteClient.Scene.RegionInfo.RegionName;
+            pick.GlobalPos = pos_global;
+            pick.SortOrder = sortOrder;
+            pick.Enabled = enabled ? 1 : 0;
 
-                oldpick.TopPick = topPick ? 1 : 0;
-                oldpick.ParcelUUID = parceluuid;
-                oldpick.Name = name;
-                oldpick.Description = desc;
-                oldpick.SnapshotUUID = snapshotID;
-                oldpick.User = user;
-                oldpick.OriginalName = OrigionalName;
-                oldpick.SimName = remoteClient.Scene.RegionInfo.RegionName;
-                oldpick.GlobalPos = pos_global;
-                oldpick.SortOrder = sortOrder;
-                oldpick.Enabled = enabled ? 1 : 0;
-                info.Picks.Remove(pickID.ToString());
-                info.Picks.Add(pickID.ToString(), oldpick.ToOSD());
-            }
-            ProfileFrontend.UpdateUserProfile(info);
+            ProfileFrontend.AddPick (pick);
         }
 
         public void GodPickDelete(IClientAPI remoteClient, UUID AgentID, UUID queryPickID, UUID queryID)
         {
             if (GetRegionUserIsIn(remoteClient.AgentId).Permissions.IsGod(remoteClient.AgentId))
             {
-                IUserProfileInfo info = ProfileFrontend.GetUserProfile(remoteClient.AgentId);
-
-                if (info == null)
-                    return;
-                if (info.Picks.ContainsKey(queryPickID.ToString()))
-                {
-                    ProfilePickInfo oldpick = new ProfilePickInfo();
-                    oldpick.FromOSD((OSDMap)info.Picks[queryPickID.ToString()]);
-
-                    info.Picks.Remove(queryPickID.ToString());
-                    ProfileFrontend.UpdateUserProfile(info);
-                }
+                ProfileFrontend.RemovePick (queryPickID);
             }
         }
         
         public void PickDelete(IClientAPI remoteClient, UUID queryPickID)
         {
-            IUserProfileInfo info = ProfileFrontend.GetUserProfile(remoteClient.AgentId);
-
-            if (info == null)
-                return;
-            if (info.Picks.ContainsKey(queryPickID.ToString()))
-            {
-                ProfilePickInfo oldpick = new ProfilePickInfo();
-                oldpick.FromOSD((OSDMap)info.Picks[queryPickID.ToString()]);
-                if (oldpick.CreatorUUID != remoteClient.AgentId)
-                    return;
-
-                info.Picks.Remove(queryPickID.ToString());
-                ProfileFrontend.UpdateUserProfile(info);
-            }
+            ProfileFrontend.RemovePick (queryPickID);
         }
 
         #endregion
