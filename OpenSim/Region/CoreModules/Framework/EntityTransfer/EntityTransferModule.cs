@@ -147,11 +147,11 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
         public virtual void Teleport(IScenePresence sp, ulong regionHandle, Vector3 position, Vector3 lookAt, uint teleportFlags)
         {
-            uint x = 0, y = 0;
-            Utils.LongToUInts(regionHandle, out x, out y);
+            int x = 0, y = 0;
+            Util.UlongToInts(regionHandle, out x, out y);
 
-            GridRegion reg = sp.Scene.GridService.GetRegionByPosition(sp.Scene.RegionInfo.ScopeID, (int)x, (int)y);
-
+            GridRegion reg = sp.Scene.GridService.GetRegionByPosition (sp.Scene.RegionInfo.ScopeID, x, y);
+            
             if (reg == null)
             {
                 // TP to a place that doesn't exist (anymore)
@@ -159,8 +159,8 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 sp.ControllingClient.SendTeleportFailed("The region you tried to teleport to doesn't exist anymore");
 
                 // and set the map-tile to '(Offline)'
-                uint regX, regY;
-                Utils.LongToUInts(regionHandle, out regX, out regY);
+                int regX, regY;
+                Util.UlongToInts(regionHandle, out regX, out regY);
 
                 MapBlockData block = new MapBlockData();
                 block.X = (ushort)(regX / Constants.RegionSize);
@@ -257,11 +257,6 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             m_log.DebugFormat(
                 "[ENTITY TRANSFER MODULE]: Request Teleport to {0}:{1}/{2}",
                 finalDestination.ServerURI, finalDestination.RegionName, position);
-
-            int newRegionX = finalDestination.RegionLocX;
-            int newRegionY = finalDestination.RegionLocY;
-            int oldRegionX = sp.Scene.RegionInfo.RegionLocX;
-            int oldRegionY = sp.Scene.RegionInfo.RegionLocY;
 
             sp.ControllingClient.SendTeleportProgress(teleportFlags, "arriving");
 
@@ -947,7 +942,6 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
         /// also return a reason.</returns>
         public bool NewUserConnection (IScene scene, AgentCircuitData agent, uint teleportFlags, out string reason)
         {
-            bool vialogin = ((teleportFlags & (uint)TeleportFlags.ViaLogin) != 0);
             reason = String.Empty;
 
             // Don't disable this log message - it's too helpful

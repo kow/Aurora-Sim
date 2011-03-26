@@ -436,7 +436,6 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
-        private Vector3 m_SavedAttachedPos;
         /// <summary>
         /// NOTE: THIS WILL NOT BE UP TO DATE AS THEY WILL BE ONE REV BEHIND
         /// Used to save attachment pos and point over rezzing/taking
@@ -450,7 +449,6 @@ namespace OpenSim.Region.Framework.Scenes
             set
             {
                 SetComponentState("SavedAttachedPos", value);
-                m_SavedAttachedPos = value;
             }
         }
 
@@ -495,7 +493,6 @@ namespace OpenSim.Region.Framework.Scenes
             }
       
 
-        private int m_savedAttachmentPoint;
         public int SavedAttachmentPoint
         {
             get
@@ -505,7 +502,6 @@ namespace OpenSim.Region.Framework.Scenes
             set
             {
                 SetComponentState("SavedAttachmentPoint", value);
-                m_savedAttachmentPoint = value;
             }
         }
 
@@ -3712,10 +3708,10 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         public void ClearUpdateSchedule()
         {
-            foreach (IScenePresence SP in ParentGroup.Scene.GetScenePresences())
+            /*foreach (IScenePresence SP in ParentGroup.Scene.GetScenePresences())
             {
                 SP.SceneViewer.ClearUpdatesForPart(this);
-            }
+            }*/
         }
 
         /// <summary>
@@ -3724,10 +3720,10 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         public void ClearUpdateScheduleOnce()
         {
-            foreach (IScenePresence SP in ParentGroup.Scene.GetScenePresences())
+            /*foreach (IScenePresence SP in ParentGroup.Scene.GetScenePresences())
             {
                 SP.SceneViewer.ClearUpdatesForOneLoopForPart(this);
-            }
+            }*/
         }
 
         /// <summary>

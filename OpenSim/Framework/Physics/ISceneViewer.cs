@@ -38,47 +38,71 @@ namespace OpenSim.Framework
         IPrioritizer Prioritizer { get; }
 
         /// <summary>
+        /// The instance of the culler the SceneViewer uses
+        /// </summary>
+        ICuller Culler { get; }
+
+        /// <summary>
+        /// Send a presence terse update to all clients
+        /// </summary>
+        /// <param name="presence"></param>
+        /// <param name="flags"></param>
+        void QueuePresenceForUpdate (IScenePresence presence, PrimUpdateFlags flags);
+
+        /// <summary>
         /// Add the objects to the queue for which we need to send an update to the client
         /// </summary>
         /// <param name="part"></param>
         void QueuePartForUpdate(ISceneChildEntity part, PrimUpdateFlags UpdateFlags);
 
         /// <summary>
-        /// This loops through all of the lists that we have for the client
-        ///  as well as checking whether the client has ever entered the sim before
-        ///  and sending the needed updates to them if they have just entered.
+        /// This method is called by the LLUDPServer and should never be called by anyone else
+        /// It loops through the available updates and sends them out (no waiting)
         /// </summary>
-        void SendPrimUpdates();
+        /// <param name="numUpdates">The number of updates to send</param>
+        void SendPrimUpdates(int numUpdates);
 
         /// <summary>
-        /// Clear the updates for this part in the next update loop
+        /// The client has left this region and went into a child region, clean up anything required
         /// </summary>
-        /// <param name="part"></param>
-        void ClearUpdatesForPart (ISceneChildEntity sceneObjectPart);
+        void Reset ();
 
         /// <summary>
-        /// Clear the updates for this part in the next update loop only
+        /// Closes the SceneViewer
         /// </summary>
-        /// <param name="part"></param>
-        void ClearUpdatesForOneLoopForPart (ISceneChildEntity sceneObjectPart);
-
-        /// <summary>
-        /// Run through all of the updates we have and re-assign their priority depending
-        ///  on what is now going on in the Scene
-        /// </summary>
-        void Reprioritize();
-
-        /// <summary>
-        /// Reset all lists that have to deal with what updates the viewer has
-        /// </summary>
-        void Reset();
+        void Close ();
     }
 
     public interface IPrioritizer
     {
-        double GetUpdatePriority (IClientAPI client, ISceneEntity entity);
-        double RootReprioritizationDistance { get; }
+        /// <summary>
+        /// Gets the priority for the given client/entity
+        /// </summary>
+        /// <param name="client"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        double GetUpdatePriority (IScenePresence client, IEntity entity);
+
+        /// <summary>
+        /// The distance before we send a child agent update to all neighbors
+        /// </summary>
         double ChildReprioritizationDistance { get; }
+    }
+
+    public interface ICuller
+    {
+        /// <summary>
+        /// Is culling enabled?
+        /// </summary>
+        bool UseCulling { get; set; }
+
+        /// <summary>
+        /// Should the given object be should to the given client?
+        /// </summary>
+        /// <param name="client"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        bool ShowEntityToClient (IScenePresence client, IEntity entity);
     }
 
     public interface IAnimator

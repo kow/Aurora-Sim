@@ -41,9 +41,8 @@ using OpenSim.Region.Framework.Scenes;
 namespace OpenSim.Region.CoreModules.World.WorldMap
 {
     // Hue, Saturation, Value; used for color-interpolation
-    struct HSV {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
+    public struct HSV
+    {
         public float h;
         public float s;
         public float v;
@@ -290,8 +289,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         {
             BitmapProcessing.FastBitmap unsafeBMP = new BitmapProcessing.FastBitmap(mapbmp);
             unsafeBMP.LockBitmap();
-            DateTime start = DateTime.Now;
-            int tc = Environment.TickCount;
+            //DateTime start = DateTime.Now;
             //m_log.Info("[MAPTILE]: Generating Maptile Step 1: Terrain");
 
             // These textures should be in the AssetCache anyway, as every client conneting to this
@@ -321,15 +319,15 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             float waterHeight = (float)settings.WaterHeight;
 
             ITerrainChannel heightmap = m_scene.RequestModuleInterface<ITerrainChannel>();
-            int sizeRatio = m_scene.RegionInfo.RegionSizeX / Constants.RegionSize;
-            for (int y = 0; y < m_scene.RegionInfo.RegionSizeY; y += sizeRatio)
+            float sizeRatio = (float)m_scene.RegionInfo.RegionSizeX / (float)Constants.RegionSize;
+            for (float y = 0; y < m_scene.RegionInfo.RegionSizeY; y += sizeRatio)
             {
                 float rowRatio = y / (m_scene.RegionInfo.RegionSizeY - 1); // 0 - 1, for interpolation
-                for (int x = 0; x < m_scene.RegionInfo.RegionSizeX; x += sizeRatio)
+                for (float x = 0; x < m_scene.RegionInfo.RegionSizeX; x += sizeRatio)
                 {
                     float columnRatio = x / (m_scene.RegionInfo.RegionSizeX - 1); // 0 - 1, for interpolation
 
-                    float heightvalue = getHeight (heightmap, x, y);
+                    float heightvalue = getHeight (heightmap, (int)x, (int)y);
 
                     if (heightvalue > waterHeight)
                     {
@@ -375,19 +373,19 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                         }
                         //get the data from the original image
                         Color hsvColor = hsv.toColor ();
-                        unsafeBMP.SetPixel (x / sizeRatio, ((m_scene.RegionInfo.RegionSizeY - 1) - y) / sizeRatio, hsvColor);
+                        unsafeBMP.SetPixel ((int)(x / sizeRatio),(int)(((m_scene.RegionInfo.RegionSizeY - 1) - y) / sizeRatio), hsvColor);
                     }
                     else
                     {
                         // We're under the water level with the terrain, so paint water instead of land
-                        unsafeBMP.SetPixel (x / sizeRatio, ((m_scene.RegionInfo.RegionSizeY - 1) - y) / sizeRatio, WATER_COLOR);
+                        unsafeBMP.SetPixel ((int)(x / sizeRatio), (int)(((m_scene.RegionInfo.RegionSizeY - 1) - y) / sizeRatio), WATER_COLOR);
                     }
                 }
             }
             if (m_mapping != null)
                 m_mapping.Clear();
             unsafeBMP.UnlockBitmap();
-            //m_log.Info("[MAPTILE]: Generating Maptile Step 1: Done in " + (Environment.TickCount - tc) + " ms");
+            //m_log.Info("[MAPTILE]: Generating Maptile Step 1: Done in " + (DateTime.Now - start).TotalSeconds + " ms");
             return unsafeBMP.Bitmap();
         }
     }

@@ -147,8 +147,12 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
             if (drawPrimVolume && terrainBMP != null)
             {
-                mapBMP = new Bitmap(terrainBMP);
-                mapBMP = DrawObjectVolume(m_scene, mapBMP);
+                mapBMP = new Bitmap (terrainBMP);
+                mapBMP = DrawObjectVolume (m_scene, mapBMP);
+            }
+            else
+            {
+                mapBMP = new Bitmap (terrainBMP);
             }
 
             if(m_mapping != null)
@@ -227,9 +231,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
         private Bitmap DrawObjectVolume(Scene whichScene, Bitmap mapbmp)
         {
-            int tc = 0;
             ITerrainChannel heightmap = whichScene.RequestModuleInterface<ITerrainChannel>();
-            tc = Environment.TickCount;
             //m_log.Info("[MAPTILE]: Generating Maptile Step 2: Object Volume Profile");
             ISceneEntity[] objs = whichScene.Entities.GetEntities ();
             Dictionary<uint, DrawStruct> z_sort = new Dictionary<uint, DrawStruct>();

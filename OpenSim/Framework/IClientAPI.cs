@@ -1186,10 +1186,8 @@ namespace OpenSim.Framework
         void SetChildAgentThrottle(byte[] throttle);
 
         void SendAvatarDataImmediate (IEntity avatar);
-        void SendPrimUpdate (IEntity entity, PrimUpdateFlags updateFlags);
-        void SendPrimUpdate (IEntity entity, PrimUpdateFlags updateFlags, double priority);
+        void SendPrimUpdate (IEnumerable<EntityUpdate> updates);
         void FlushPrimUpdates();
-        void QueueDelayedUpdate(PriorityQueueItem<EntityUpdate, double> it);
 
         void SendInventoryFolderDetails(UUID ownerID, UUID folderID, List<InventoryItemBase> items,
                                         List<InventoryFolderBase> folders, int version, bool fetchFolders,

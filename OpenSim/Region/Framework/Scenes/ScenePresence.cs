@@ -148,8 +148,6 @@ namespace OpenSim.Region.Framework.Scenes
 
         private SendCourseLocationsMethod m_sendCourseLocationsMethod;
 
-        private Vector3 m_requestedSitOffset = new Vector3();
-
         private float m_sitAvatarHeight = 2.0f;
 
         private int m_godLevel;
@@ -192,10 +190,6 @@ namespace OpenSim.Region.Framework.Scenes
         /// Used for trigging signficant camera movement
         /// </summary>
         protected Vector3 m_lastCameraCenter;
-        /// <summary>
-        /// This is used for reprioritization of updates so that we can reprioritze every time the position gets too different
-        /// </summary>
-        protected Vector3 m_lastAbsolutePosition;
 
         // Use these three vectors to figure out what the agent is looking at
         // Convert it to a Matrix and/or Quaternion
@@ -390,7 +384,7 @@ namespace OpenSim.Region.Framework.Scenes
                     {
                         //Send an update to all child agents if we are a root agent
                         m_enqueueSendChildAgentUpdate = true;
-                        m_enqueueSendChildAgentUpdateTime = DateTime.Now.AddSeconds(10);
+                        m_enqueueSendChildAgentUpdateTime = DateTime.Now.AddSeconds(5);
                     }
                 }
             }
@@ -1151,15 +1145,6 @@ namespace OpenSim.Region.Framework.Scenes
 
             if (AllowMovement && !SitGround && !Frozen)
             {
-                //! Note: we use last absolute position instead of camera pos as camera pos is updated far too often.
-                //! If you put your mouse on an object, it would reprioritize updates for over at the objects position, then again when you lifted the mouse off of the object if the object is more than 10 meters away.
-                //! So we only do AbsolutePosition for now until we can find a better way.
-                if (Vector3.Distance(m_lastAbsolutePosition, AbsolutePosition) >= m_sceneViewer.Prioritizer.RootReprioritizationDistance)
-                {
-                    m_lastAbsolutePosition = AbsolutePosition;
-                    m_sceneViewer.Reprioritize();
-                }
-
                 if (agentData.UseClientAgentPosition)
                 {
                     m_moveToPositionInProgress = (agentData.ClientAgentPosition - AbsolutePosition).Length() > 0.2f;
@@ -1597,7 +1582,6 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 m_nextSitAnimation = part.SitAnimation;
             }
-            m_requestedSitOffset = Vector3.Zero;
             m_requestedSitTargetUUID = targetID;
 
             Vector3 sitTargetPos = part.SitTargetPosition;
@@ -1753,7 +1737,6 @@ namespace OpenSim.Region.Framework.Scenes
                 {
                     m_nextSitAnimation = part.SitAnimation;
                 }
-                m_requestedSitOffset = offset;
                 m_requestedSitTargetUUID = targetID;
                 
                 //m_log.DebugFormat("[SIT]: Client requested Sit Position: {0}", offset);
@@ -1789,7 +1772,6 @@ namespace OpenSim.Region.Framework.Scenes
             ISceneChildEntity part = FindNextAvailableSitTarget (targetID);
             if (part != null)
             {
-                m_requestedSitOffset = offset;
                 m_requestedSitTargetUUID = targetID;
 
                 m_log.DebugFormat("[SIT]: Client requested Sit Position: {0}", offset);
@@ -2026,12 +2008,6 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void Update()
         {
-            if (!m_sendingPrimUpdates) // && (sendPrimsLoop & SendPrimsNum) == 0)
-            {
-                m_sendingPrimUpdates = true;
-                Util.FireAndForget(SendPrimUpdates);
-            }
-//            sendPrimsLoop++;
             //if (!IsChildAgent)
             //{
             //    if (m_parentID != UUID.Zero)
@@ -2064,15 +2040,6 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
-        public volatile bool m_sendingPrimUpdates = false;
-//        private int sendPrimsLoop = 0;
-//        private const int SendPrimsNum = 5;
-        private void SendPrimUpdates(object o)
-        {
-            m_sceneViewer.SendPrimUpdates();
-            m_sendingPrimUpdates = false;
-        }
-
         #endregion
 
         #region Update Client(s)
@@ -2081,24 +2048,18 @@ namespace OpenSim.Region.Framework.Scenes
         /// Sends a location update to the client connected to this scenePresence
         /// </summary>
         /// <param name="remoteClient"></param>
-        public void SendTerseUpdateToClient(IClientAPI remoteClient)
+        public void SendTerseUpdateToClient (IScenePresence remoteClient)
         {
-            // If the client is inactive, it's getting its updates from another
-            // server.
-            if (remoteClient.IsActive)
+            //m_log.DebugFormat("[SCENEPRESENCE]: TerseUpdate: Pos={0} Rot={1} Vel={2}", m_pos, m_bodyRot, m_velocity);
+            remoteClient.SceneViewer.QueuePresenceForUpdate (
+                this,
+                PrimUpdateFlags.Position | PrimUpdateFlags.Rotation | PrimUpdateFlags.Velocity
+                | PrimUpdateFlags.Acceleration | PrimUpdateFlags.AngularVelocity);
+
+            IAgentUpdateMonitor reporter = (IAgentUpdateMonitor)m_scene.RequestModuleInterface<IMonitorModule> ().GetMonitor (m_scene.RegionInfo.RegionID.ToString (), "Agent Update Count");
+            if (reporter != null)
             {
-                //m_log.DebugFormat("[SCENEPRESENCE]: TerseUpdate: Pos={0} Rot={1} Vel={2}", m_pos, m_bodyRot, m_velocity);
-
-                remoteClient.SendPrimUpdate(
-                    this,
-                    PrimUpdateFlags.Position | PrimUpdateFlags.Rotation | PrimUpdateFlags.Velocity
-                    | PrimUpdateFlags.Acceleration | PrimUpdateFlags.AngularVelocity, 0);
-
-                IAgentUpdateMonitor reporter = (IAgentUpdateMonitor)m_scene.RequestModuleInterface<IMonitorModule>().GetMonitor(m_scene.RegionInfo.RegionID.ToString(), "Agent Update Count");
-                if (reporter != null)
-                {
-                    reporter.AddAgentUpdates(1);
-                }
+                reporter.AddAgentUpdates (1);
             }
         }
 
@@ -2109,7 +2070,7 @@ namespace OpenSim.Region.Framework.Scenes
         {
             m_perfMonMS = Util.EnvironmentTickCount();
 
-            m_scene.ForEachClient(SendTerseUpdateToClient);
+            m_scene.ForEachScenePresence(SendTerseUpdateToClient);
 
             IAgentUpdateMonitor reporter = (IAgentUpdateMonitor)m_scene.RequestModuleInterface<IMonitorModule>().GetMonitor(m_scene.RegionInfo.RegionID.ToString(), "Agent Update Count");
             if (reporter != null)
@@ -2227,7 +2188,6 @@ namespace OpenSim.Region.Framework.Scenes
 
             Vector3 pos2 = AbsolutePosition;
             Vector3 vel = Velocity;
-            int[] fix = new int[2];
 
             float timeStep = 0.1f;
             pos2.X = pos2.X + (vel.X*timeStep);
@@ -2365,7 +2325,6 @@ namespace OpenSim.Region.Framework.Scenes
 
             m_scene.EventManager.TriggerSignificantClientMovement(m_controllingClient);
 
-            m_sceneViewer.Reprioritize();
             //m_velocity = cAgentData.Velocity;
         }
 
@@ -2692,7 +2651,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void Close()
         {
-            m_sceneViewer.Reset();
+            m_sceneViewer.Close();
 
             RemoveFromPhysicalScene();
             if (m_animator == null)
@@ -2710,11 +2669,5 @@ namespace OpenSim.Region.Framework.Scenes
         {
             m_sceneViewer.QueuePartForUpdate(part, flags);
         }
-
-        #region IScenePresence Members
-
-        
-
-        #endregion
     }
 }

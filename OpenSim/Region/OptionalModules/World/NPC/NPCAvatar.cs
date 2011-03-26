@@ -58,10 +58,6 @@ namespace OpenSim.Region.OptionalModules.World.NPC
         {
         }
 
-        public void QueueDelayedUpdate(PriorityQueueItem<EntityUpdate, double> it)
-            {
-            }
-
         public IScene Scene
         {
             get { return m_scene; }
@@ -675,11 +671,7 @@ namespace OpenSim.Region.OptionalModules.World.NPC
         {
         }
 
-        public void SendPrimUpdate (IEntity entity, PrimUpdateFlags updateFlags)
-        {
-        }
-
-        public void SendPrimUpdate (IEntity entity, PrimUpdateFlags updateFlags, double priority)
+        public void SendPrimUpdate (IEnumerable<EntityUpdate> updates)
         {
         }
 

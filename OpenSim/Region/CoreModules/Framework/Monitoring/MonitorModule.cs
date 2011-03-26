@@ -59,41 +59,41 @@ namespace OpenSim.Region.CoreModules.Framework.Monitoring
 
         public enum Stats : uint
         {
-            TimeDilation,		   // 0
+            TimeDilation,
             FPS,
             PhysFPS,
             AgentUpdates,
             FrameMS,
-            NetMS,			       // 5
+            NetMS,
             SimOtherMS,
             SimPhysicsMS,
             AgentMS,
             ImagesMS,
-            ScriptMS,			   // 10
+            ScriptMS,
             TotalObjects,
             ActiveObjects,
             NumAgentMain,
             NumAgentChild,
-            NumScriptActive,	   // 15
-            LSLIPS,
-            InPPS,
-            OutPPS,
+            NumScriptActive,
+            LSLIPS, //Lines per second
+            InPPS,//Packets per second
+            OutPPS,//Packets per second
             PendingDownloads,
-            PendingUploads,		   // 20
+            PendingUploads,
             VirtualSizeKB,
             ResidentSizeKB,
             PendingLocalUploads,
             TotalUnackedBytes,
-            PhysicsPinnedTasks,	   // 25
+            PhysicsPinnedTasks,
             PhysicsLODTasks,
             SimPhysicsStepMS,
             SimPhysicsShape,
             SimPhysicsOtherMS,
-            SimPhysicsMemory,      // 30
-            ScriptEPS,
+            SimPhysicsMemory,
+            ScriptEPS,//Events per second
             SimSpareTime,
             SimSleepTime,
-            IOPumpTime             //34
+            IOPumpTime
         }
 
         #endregion
@@ -439,7 +439,6 @@ namespace OpenSim.Region.CoreModules.Framework.Monitoring
                     ISimFrameMonitor simFrameMonitor = (ISimFrameMonitor)GetMonitor("SimFrameStats");
                     ITimeDilationMonitor timeDilationMonitor = (ITimeDilationMonitor)GetMonitor("Time Dilation");
                     ITotalFrameTimeMonitor totalFrameMonitor = (ITotalFrameTimeMonitor)GetMonitor("Total Frame Time");
-                    ISetMonitor lastFrameMonitor = (ISetMonitor)GetMonitor("Last Completed Frame At");
                     ITimeMonitor sleepFrameMonitor = (ITimeMonitor)GetMonitor("Sleep Frame Time");
                     ITimeMonitor otherFrameMonitor = (ITimeMonitor)GetMonitor("Other Frame Time");
                     IPhysicsFrameMonitor physicsFrameMonitor = (IPhysicsFrameMonitor)GetMonitor("Total Physics Frame Time");

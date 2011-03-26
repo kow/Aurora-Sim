@@ -43,11 +43,11 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
     {
         #region ITerrainLoader Members
 
-        public ITerrainChannel LoadFile(string filename)
+        public ITerrainChannel LoadFile (string filename, IScene scene)
         {
             FileInfo file = new FileInfo(filename);
             FileStream s = file.Open(FileMode.Open, FileAccess.Read);
-            ITerrainChannel retval = LoadStream(s);
+            ITerrainChannel retval = LoadStream(s, scene);
 
             s.Close();
 
@@ -65,7 +65,6 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
             bool eof = false;
 
             int fileXPoints = 0;
-            int fileYPoints = 0;
 
             // Terragen file
             while (eof == false)
@@ -75,7 +74,6 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
                 {
                     case "SIZE":
                         fileXPoints = bs.ReadInt16() + 1;
-                        fileYPoints = fileXPoints;
                         bs.ReadInt16();
                         break;
                     case "XPTS":
@@ -83,7 +81,7 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
                         bs.ReadInt16();
                         break;
                     case "YPTS":
-                        fileYPoints = bs.ReadInt16();
+                        /*int fileYPoints = */bs.ReadInt16();
                         bs.ReadInt16();
                         break;
                     case "ALTW":
@@ -151,22 +149,17 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
             return retval;
         }
 
-        public ITerrainChannel LoadStream(Stream s)
+        public ITerrainChannel LoadStream (Stream s, IScene scene)
         {
-
-            int w = (int)Constants.RegionSize;
-            int h = (int)Constants.RegionSize;
-
-            TerrainChannel retval = new TerrainChannel(w, h, null);
+            TerrainChannel retval = new TerrainChannel (true, scene);
 
             BinaryReader bs = new BinaryReader(s);
 
             bool eof = false;
             if (Encoding.ASCII.GetString(bs.ReadBytes(16)) == "TERRAGENTERRAIN ")
             {
-
-                int fileWidth = w;
-                int fileHeight = h;
+                int fileWidth = scene.RegionInfo.RegionSizeX;
+                int fileHeight = scene.RegionInfo.RegionSizeY;
 
 
                 // Terragen file
@@ -193,9 +186,9 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
                             eof = true;
                             Int16 heightScale = bs.ReadInt16();
                             Int16 baseHeight = bs.ReadInt16();
-                            for (int y = 0; y < h; y++)
+                            for (int y = 0; y < fileHeight; y++)
                             {
-                                for (int x = 0; x < w; x++)
+                                for (int x = 0; x < fileWidth; x++)
                                 {
                                     retval[x, y] = baseHeight + bs.ReadInt16() * heightScale / 65536;
                                 }
