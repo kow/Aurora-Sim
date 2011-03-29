@@ -40,6 +40,11 @@ namespace OpenSim.Services.CapsService
             get { return GetType().Name; }
         }
 
+        public virtual IEventQueueService InnerService
+        {
+            get { return this; }
+        }
+
         public virtual void Initialize(IConfigSource config, IRegistryCore registry)
         {
             IConfig handlerConfig = config.Configs["Handlers"];
@@ -54,7 +59,7 @@ namespace OpenSim.Services.CapsService
             m_service = registry.RequestModuleInterface<ICapsService>();
         }
 
-        public void FinishedStartup()
+        public virtual void FinishedStartup ()
         {
         }
 

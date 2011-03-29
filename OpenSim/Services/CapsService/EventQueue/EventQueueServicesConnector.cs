@@ -65,13 +65,18 @@ namespace OpenSim.Services.CapsService
             get { return GetType().Name; }
         }
 
+        public override IEventQueueService InnerService
+        {
+            get { return this; }
+        }
+
         public override void Initialize(IConfigSource config, IRegistryCore registry)
         {
+            m_registry = registry;
             IConfig handlerConfig = config.Configs["Handlers"];
             if (handlerConfig.GetString("EventQueueHandler", "") != Name)
                 return;
 
-            m_registry = registry;
             registry.RegisterModuleInterface<IEventQueueService>(this);
         }
 

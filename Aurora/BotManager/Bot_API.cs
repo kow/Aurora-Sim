@@ -52,7 +52,7 @@ using Aurora.ScriptEngine.AuroraDotNetEngine.Runtime;
 using OpenSim.Services.Interfaces;
 using Aurora.ScriptEngine.AuroraDotNetEngine;
 
-namespace Aurora.ScriptEngine.AuroraDotNetEngine.APIs
+namespace Aurora.BotManager
 {
     [Serializable]
     public class Bot_Api : MarshalByRefObject, IBot_Api, IScriptApi
@@ -94,6 +94,14 @@ namespace Aurora.ScriptEngine.AuroraDotNetEngine.APIs
             get { return new string[1] {
                 AssemblyFileName
             }; }
+        }
+
+        /// <summary>
+        /// We use "Aurora.BotManager", and that isn't a default namespace, so we need to add it
+        /// </summary>
+        public string[] NamespaceAdditions
+        {
+            get { return new string[1] { "Aurora.BotManager" }; }
         }
 
         /// <summary>
@@ -139,6 +147,13 @@ namespace Aurora.ScriptEngine.AuroraDotNetEngine.APIs
             if (manager != null)
                 return manager.CreateAvatar(FirstName, LastName, m_host.ParentEntity.Scene, UUID.Parse(appearanceToClone)).ToString();
             return "";
+        }
+
+        public void botSetShouldFly (string keyOfBot, int ShouldFly)
+        {
+            IBotManager manager = World.RequestModuleInterface<IBotManager> ();
+            if (manager != null)
+               manager.SetBotShouldFly (UUID.Parse(keyOfBot), ShouldFly == 1);
         }
 
         public void botSetMap(string keyOfBot, LSL_List positions, LSL_List movementType)
@@ -187,6 +202,49 @@ namespace Aurora.ScriptEngine.AuroraDotNetEngine.APIs
             IBotManager manager = World.RequestModuleInterface<IBotManager>();
             if (manager != null)
                 manager.EnableAutoMove(UUID.Parse(bot));
+        }
+
+        public void botRemoveBot (string bot)
+        {
+            IBotManager manager = World.RequestModuleInterface<IBotManager> ();
+            if (manager != null)
+                manager.RemoveAvatar (UUID.Parse (bot), m_host.ParentEntity.Scene);
+        }
+
+        public void botFollowAvatar (string bot, string avatarName)
+        {
+            IBotManager manager = World.RequestModuleInterface<IBotManager> ();
+            if (manager != null)
+                manager.FollowAvatar (UUID.Parse (bot), avatarName);
+        }
+
+        public void botStopFollowAvatar (string bot, string avatarName)
+        {
+            IBotManager manager = World.RequestModuleInterface<IBotManager> ();
+            if (manager != null)
+                manager.StopFollowAvatar (UUID.Parse (bot), avatarName);
+        }
+
+        public void botSetPathMap (string bot, string pathMap, int x, int y, int cornerstoneX, int cornerstoneY)
+        {
+            IBotManager manager = World.RequestModuleInterface<IBotManager> ();
+            if (manager != null)
+                manager.ReadMap (UUID.Parse (bot), pathMap, x, y, cornerstoneX, cornerstoneY);
+        }
+
+        public void botFindPath (string bot, LSL_Vector startPos, LSL_Vector endPos)
+        {
+            IBotManager manager = World.RequestModuleInterface<IBotManager> ();
+            if (manager != null)
+                manager.FindPath (UUID.Parse (bot), new Vector3 ((float)startPos.x, (float)startPos.y, (float)startPos.z),
+                    new Vector3 ((float)endPos.x, (float)endPos.y, (float)endPos.z));
+        }
+
+        public void botSendChatMessage (string bot, string message, int sayType)
+        {
+            IBotManager manager = World.RequestModuleInterface<IBotManager> ();
+            if (manager != null)
+                manager.SendChatMessage (UUID.Parse (bot), message, sayType);
         }
     }
 }

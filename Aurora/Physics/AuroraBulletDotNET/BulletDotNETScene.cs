@@ -101,7 +101,7 @@ namespace OpenSim.Region.Physics.BulletDotNETPlugin
         public float maximumMassObject = 10000.01f;
         public float minimumGroundFlightOffset = 3;
 
-        private float[] _origheightmap;    // Used for Fly height. Kitto Flora
+        private short[] _origheightmap;    // Used for Fly height. Kitto Flora
         private bool usingGImpactAlgorithm = false;
 
         // private IConfigSource m_config;
@@ -148,7 +148,6 @@ namespace OpenSim.Region.Physics.BulletDotNETPlugin
         {
             mesher = meshmerizer;
             m_region = region;
-            _origheightmap = new float[m_region.RegionSizeX * m_region.RegionSizeY];
         }
 
         public override void PostInitialise(IConfigSource config)
@@ -230,7 +229,7 @@ namespace OpenSim.Region.Physics.BulletDotNETPlugin
             m_world.removeCollisionObject(body);
         }
 
-        public override PhysicsActor AddAvatar(string avName, Vector3 position, Quaternion rotation, Vector3 size, bool isFlying)
+        public override PhysicsActor AddAvatar(string avName, Vector3 position, Quaternion rotation, Vector3 size, bool isFlying, uint LocalID)
         {
             lock (BulletLock)
             {
@@ -238,6 +237,7 @@ namespace OpenSim.Region.Physics.BulletDotNETPlugin
                                                                       avCapRadius, avStandupTensor, avDensity,
                                                                       avHeightFudgeFactor, avMovementDivisorWalk,
                                                                       avMovementDivisorRun);
+                chr.LocalID = LocalID;
                 try
                 {
                     lock (m_characters)
@@ -260,10 +260,10 @@ namespace OpenSim.Region.Physics.BulletDotNETPlugin
         {
             lock (BulletLock)
             {
+                BulletDotNETCharacter chr = (BulletDotNETCharacter)actor;
+
                 if (!Locked)
                 {
-                    BulletDotNETCharacter chr = (BulletDotNETCharacter)actor;
-
                     chr.Remove();
                     AddPhysicsActorTaint(chr);
                     //chr = null;
@@ -272,6 +272,7 @@ namespace OpenSim.Region.Physics.BulletDotNETPlugin
                 {
                     RemoveQueue.Add(actor);
                 }
+                m_charactersLocalID.Remove(chr.m_localID);
             }
         }
 
@@ -533,11 +534,6 @@ namespace OpenSim.Region.Physics.BulletDotNETPlugin
 
         public override void SetTerrain(short[] shortheightMap)
         {
-            float[] heightMap = new float[shortheightMap.Length];
-            for (int i = 0; i < shortheightMap.Length; i++)
-            {
-                heightMap[i] = shortheightMap[i] / Constants.TerrainCompression;
-            }
             if (m_terrainShape != null)
                 DeleteTerrain();
 
@@ -546,12 +542,18 @@ namespace OpenSim.Region.Physics.BulletDotNETPlugin
             
             // store this for later reference.
             // Note, we're storing it  after we check it for anomolies above
-            _origheightmap = heightMap;
+            _origheightmap = shortheightMap;
 
             hfmin = 0;
             hfmax = 256;
 
-            m_terrainShape = new btHeightfieldTerrainShape(m_region.RegionSizeX, m_region.RegionSizeY, heightMap,
+            float[] heightmap = new float[m_region.RegionSizeX * m_region.RegionSizeX];
+            for (int i = 0; i < shortheightMap.Length; i++)
+            {
+                heightmap[i] = shortheightMap[i] / Constants.TerrainCompression;
+            }
+
+            m_terrainShape = new btHeightfieldTerrainShape(m_region.RegionSizeX, m_region.RegionSizeY, heightmap,
                                                            1.0f, hfmin, hfmax, (int)btHeightfieldTerrainShape.UPAxis.Z,
                                                            (int)btHeightfieldTerrainShape.PHY_ScalarType.PHY_FLOAT, false);
             float AabbCenterX = m_region.RegionSizeX / 2f;
@@ -759,7 +761,7 @@ namespace OpenSim.Region.Physics.BulletDotNETPlugin
 
         internal float GetWaterLevel()
         {
-            throw new NotImplementedException();
+            return 0;
         }
 
         // Recovered for use by fly height. Kitto Flora
@@ -774,7 +776,7 @@ namespace OpenSim.Region.Physics.BulletDotNETPlugin
                 x < 0.001f || y < 0.001f)
                 return 0;
 
-            return _origheightmap[(int)y * m_region.RegionSizeY + (int)x];
+            return _origheightmap[(int)y * m_region.RegionSizeY + (int)x] / Constants.TerrainCompression;
         }
         // End recovered. Kitto Flora
 

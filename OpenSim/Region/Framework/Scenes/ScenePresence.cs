@@ -596,7 +596,10 @@ namespace OpenSim.Region.Framework.Scenes
         public bool IsChildAgent
         {
             get { return m_isChildAgent; }
-            set { m_isChildAgent = value; }
+            set 
+            { 
+                m_isChildAgent = value;
+            }
         }
 
         private UUID m_parentID;
@@ -2121,6 +2124,9 @@ namespace OpenSim.Region.Framework.Scenes
                 m_scene.EventManager.TriggerSignificantClientMovement(m_controllingClient);
             }
 
+            if (m_sceneViewer == null)
+                return;
+
             // Minimum Draw distance is 64 meters, the Radius of the draw distance sphere is 32m
             double  tmpsq = m_sceneViewer.Prioritizer.ChildReprioritizationDistance;
             tmpsq *= tmpsq;
@@ -2477,7 +2483,7 @@ namespace OpenSim.Region.Framework.Scenes
                 pVec.Z += m_avHeight;
 
             m_physicsActor = scene.AddAvatar(Name, pVec, Rotation,
-                                                 new Vector3 (0f, 0f, m_avHeight), isFlying);
+                                                 new Vector3 (0f, 0f, m_avHeight), isFlying, LocalId);
 
             scene.AddPhysicsActorTaint(m_physicsActor);
             m_physicsActor.OnRequestTerseUpdate += SendTerseUpdateToAllClients;
@@ -2487,7 +2493,6 @@ namespace OpenSim.Region.Framework.Scenes
 
             m_physicsActor.OnOutOfBounds += OutOfBoundsCall; // Called for PhysicsActors when there's something wrong
             m_physicsActor.SubscribeEvents(500);
-            m_physicsActor.LocalID = LocalId;
             m_physicsActor.Orientation = Rotation;
 
             //Tell any events about it
