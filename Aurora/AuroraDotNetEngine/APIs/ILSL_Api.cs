@@ -405,5 +405,13 @@ namespace Aurora.ScriptEngine.AuroraDotNetEngine.APIs.Interfaces
        LSL_Integer llGetLinkNumberOfSides(int LinkNum);
 
         DateTime llRezPrim(string inventory, LSL_Types.Vector3 pos, LSL_Types.Vector3 vel, LSL_Types.Quaternion rot, int param, bool isRezAtRoot, bool doRecoil, bool SetDieAtEdge, bool CheckPos);
+
+        void print(string str);
+        LSL_String llGetDisplayName(string id);
+        LSL_String llGetUsername(string id);
+        LSL_String llGetEnv(LSL_String name);
+        LSL_Key llRequestDisplayName(LSL_Key uuid);
+        LSL_Key llRequestUsername(LSL_Key uuid);
+        LSL_List llCastRay(LSL_Vector start, LSL_Vector end, LSL_List options);
     }
 }

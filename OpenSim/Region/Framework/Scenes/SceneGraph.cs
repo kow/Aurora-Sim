@@ -389,6 +389,66 @@ namespace OpenSim.Region.Framework.Scenes
             return result;
         }
 
+        /// <summary>
+        /// Gets a list of scene object group that intersect with the given ray
+        /// </summary>
+        public List<EntityIntersection> GetIntersectingPrims(Ray hray, float length, int count,
+            bool frontFacesOnly, bool faceCenters, bool getAvatars, bool getLand, bool getPrims)
+        {
+            // Primitive Ray Tracing
+            List<EntityIntersection> result = new List<EntityIntersection>(count);
+            if (getPrims)
+            {
+                ISceneEntity[] EntityList = Entities.GetEntities(hray.Origin, length);
+                foreach (ISceneEntity ent in EntityList)
+                {
+                    if (ent is SceneObjectGroup)
+                    {
+                        SceneObjectGroup reportingG = (SceneObjectGroup)ent;
+                        EntityIntersection inter = reportingG.TestIntersection(hray, frontFacesOnly, faceCenters);
+                        if (inter.HitTF)
+                            result.Add(inter);
+                    }
+                }
+            }
+            if (getAvatars)
+            {
+                IScenePresence[] presenceList = Entities.GetPresences();
+                foreach (IScenePresence ent in presenceList)
+                {
+                    //Do rough approximation and keep the # of loops down
+                    Vector3 newPos = hray.Origin;
+                    for (int i = 0; i < 100; i++)
+                    {
+                        newPos += ((Vector3.One * (length * (i / 100))) * hray.Direction);
+                        if (ent.AbsolutePosition.ApproxEquals(newPos, ent.PhysicsActor.Size.X * 2))
+                        {
+                            EntityIntersection intersection = new EntityIntersection();
+                            intersection.distance = length * (i / 100);
+                            intersection.face = 0;
+                            intersection.HitTF = true;
+                            intersection.obj = ent;
+                            intersection.ipoint = newPos;
+                            intersection.normal = newPos;
+                            result.Add(intersection);
+                            break;
+                        }
+                    }
+                }
+            }
+            if (getLand)
+            {
+                //TODO
+            }
+            result.Sort(delegate(EntityIntersection a, EntityIntersection b)
+            {
+                return a.distance.CompareTo(b.distance);
+            });
+            if(result.Count > count)
+                result.RemoveRange(count, result.Count - count);
+            return result;
+        }
+
         #endregion
 
         #region ForEach* Methods

@@ -6605,6 +6605,40 @@ namespace Aurora.ScriptEngine.AuroraDotNetEngine.APIs
             m_host.SoundRadius = radius;
         }
 
+        public LSL_String llGetDisplayName(string id)
+        {
+            ScriptProtection.CheckThreatLevel(ThreatLevel.None, "LSL", m_host, "LSL");
+
+            UUID key = new UUID();
+            if (UUID.TryParse(id, out key))
+            {
+                IScenePresence presence = World.GetScenePresence(key);
+
+                if (presence != null)
+                {
+                    IProfileConnector connector = Aurora.DataManager.DataManager.RequestPlugin<IProfileConnector>();
+                    if (connector != null)
+                        return connector.GetUserProfile(presence.UUID).DisplayName;
+                }
+            }
+            return String.Empty;
+        }
+
+        public LSL_String llGetUsername(string id)
+        {
+            ScriptProtection.CheckThreatLevel(ThreatLevel.None, "LSL", m_host, "LSL");
+
+            UUID key = new UUID();
+            if (UUID.TryParse(id, out key))
+            {
+                IScenePresence presence = World.GetScenePresence(key);
+
+                if (presence != null)
+                    return presence.Name;
+            }
+            return String.Empty;
+        }
+
         public LSL_String llKey2Name(string id)
         {
             ScriptProtection.CheckThreatLevel(ThreatLevel.None, "LSL", m_host, "LSL");
@@ -9912,10 +9946,21 @@ namespace Aurora.ScriptEngine.AuroraDotNetEngine.APIs
         public LSL_String llRequestSecureURL()
         {
             ScriptProtection.CheckThreatLevel(ThreatLevel.None, "LSL", m_host, "LSL");
-            
+
             if (m_UrlModule != null)
                 return m_UrlModule.RequestSecureURL(m_ScriptEngine.ScriptModule, m_host, m_itemID).ToString();
             return UUID.Zero.ToString();
+        }
+
+        public LSL_String llGetEnv(LSL_String name)
+        {
+            ScriptProtection.CheckThreatLevel(ThreatLevel.None, "LSL", m_host, "LSL");
+
+            if (name == "sim_channel")
+                return "Aurora-Sim Server";
+            else if (name == "sim_version")
+                return World.RequestModuleInterface<ISimulationBase>().Version;
+            return "";
         }
 
         public LSL_Key llRequestSimulatorData(string simulator, int data)
@@ -11611,6 +11656,122 @@ namespace Aurora.ScriptEngine.AuroraDotNetEngine.APIs
                 });
         }
 
+        public LSL_List llCastRay(LSL_Vector start, LSL_Vector end, LSL_List options)
+        {
+            Vector3 dir = new Vector3((float)(end-start).x, (float)(end-start).y, (float)(end-start).z);
+            Vector3 startvector = new Vector3((float)start.x, (float)start.y, (float)start.z);
+            Vector3 endvector = new Vector3((float)end.x, (float)end.y, (float)end.z);
+
+
+            int count = 0;
+            int detectPhantom = 0;
+            int dataFlags = 0;
+            int rejectTypes = 0;
+
+            for (int i = 0; i < options.Length; i += 2)
+            {
+                if (options.GetLSLIntegerItem(i) == ScriptBaseClass.RC_MAX_HITS)
+                {
+                    count = options.GetLSLIntegerItem(i + 1);
+                }
+                else if (options.GetLSLIntegerItem(i) == ScriptBaseClass.RC_DETECT_PHANTOM)
+                {
+                    detectPhantom = options.GetLSLIntegerItem(i + 1);
+                }
+                else if (options.GetLSLIntegerItem(i) == ScriptBaseClass.RC_DATA_FLAGS)
+                {
+                    dataFlags = options.GetLSLIntegerItem(i + 1);
+                }
+                else if (options.GetLSLIntegerItem(i) == ScriptBaseClass.RC_REJECT_TYPES)
+                {
+                    rejectTypes = options.GetLSLIntegerItem(i + 1);
+                }
+            }
+
+            LSL_List list = new LSL_List();
+            List<ContactResult> results = World.PhysicsScene.RaycastWorld(startvector, dir, dir.Length(), count);
+
+            double distance = Util.GetDistanceTo(startvector, endvector);
+            if (distance == 0)
+                distance = 0.001;
+            Vector3 posToCheck = startvector;
+            ITerrainChannel channel = World.RequestModuleInterface<ITerrainChannel>();
+            List<IScenePresence> presences = new List<IScenePresence>(World.Entities.GetPresences(startvector, (float)distance));
+            bool checkTerrain = true;
+            for (float i = 0; i <= distance; i += 0.1f)
+            {
+                posToCheck += (dir * (i / (float)distance));
+                if (checkTerrain && channel[(int)(posToCheck.X + startvector.X), (int)(posToCheck.Y + startvector.Y)] < posToCheck.Z)
+                {
+                    ContactResult result = new ContactResult();
+                    result.ConsumerID = 0;
+                    result.Depth = 0;
+                    result.Normal = Vector3.Zero;
+                    result.Pos = posToCheck;
+                    results.Add(result);
+                    checkTerrain = false;
+                }
+                for(int presenceCount = 0; i < presences.Count; i++)
+                {
+                    IScenePresence sp = presences[presenceCount];
+                    if (sp.AbsolutePosition.ApproxEquals(posToCheck, sp.PhysicsActor.Size.X * 2))
+                    {
+                        ContactResult result = new ContactResult();
+                        result.ConsumerID = sp.LocalId;
+                        result.Depth = 0;
+                        result.Normal = Vector3.Zero;
+                        result.Pos = posToCheck;
+                        results.Add(result);
+                        presences.RemoveAt(presenceCount);
+                        i--; //Reset its position since we removed this one
+                    }
+                }
+            }
+            foreach (ContactResult result in results)
+            {
+                if ((rejectTypes & ScriptBaseClass.RC_REJECT_LAND) == ScriptBaseClass.RC_REJECT_LAND &&
+                    result.ConsumerID == 0)
+                    continue;
+
+                IEntity entity = World.GetSceneObjectPart(result.ConsumerID);
+                if (entity == null && (rejectTypes & ScriptBaseClass.RC_REJECT_AGENTS) != ScriptBaseClass.RC_REJECT_AGENTS)
+                    entity = World.GetScenePresence(result.ConsumerID); //Only check if we should be looking for agents
+                if (entity == null)
+                {
+                    list.Add(UUID.Zero);
+                    if ((dataFlags & ScriptBaseClass.RC_GET_LINK_NUM) == ScriptBaseClass.RC_GET_LINK_NUM)
+                        list.Add(0);
+                    list.Add(result.Pos);
+                    if ((dataFlags & ScriptBaseClass.RC_GET_NORMAL) == ScriptBaseClass.RC_GET_NORMAL)
+                        list.Add(result.Normal);
+                    continue; //Can't find it, so add UUID.Zero
+                }
+
+                /*if (detectPhantom == 0 && intersection.obj is ISceneChildEntity &&
+                    ((ISceneChildEntity)intersection.obj).PhysActor == null)
+                    continue;*/ //Can't do this ATM, physics engine knows only of non phantom objects
+
+                if ((dataFlags & ScriptBaseClass.RC_GET_ROOT_KEY) == ScriptBaseClass.RC_GET_ROOT_KEY && entity is ISceneChildEntity)
+                    list.Add(((ISceneChildEntity)entity).ParentEntity.UUID);
+                else
+                    list.Add(entity.UUID);
+
+                if ((dataFlags & ScriptBaseClass.RC_GET_LINK_NUM) == ScriptBaseClass.RC_GET_LINK_NUM)
+                    if (entity is ISceneChildEntity)
+                        list.Add(((ISceneChildEntity)entity).LinkNum);
+                    else
+                        list.Add(0);
+
+                list.Add(result.Pos);
+                if ((dataFlags & ScriptBaseClass.RC_GET_NORMAL) == ScriptBaseClass.RC_GET_NORMAL)
+                    list.Add(result.Normal);
+            }
+
+            list.Add(results.Count); //The status code, either the # of contacts, RCERR_SIM_PERF_LOW, or RCERR_CAST_TIME_EXCEEDED
+
+            return list;
+        }
+
         public LSL_Key llGetNumberOfNotecardLines(string name)
         {
             ScriptProtection.CheckThreatLevel(ThreatLevel.None, "LSL", m_host, "LSL");
@@ -11673,6 +11834,68 @@ namespace Aurora.ScriptEngine.AuroraDotNetEngine.APIs
 
             ScriptSleep(100);
             return tid.ToString();
+        }
+
+        public LSL_Key llRequestUsername(LSL_Key uuid)
+        {
+            UUID userID = UUID.Zero;
+
+            if (!UUID.TryParse(uuid, out userID))
+            {
+                // => complain loudly, as specified by the LSL docs
+                ShoutError("Failed to parse uuid for avatar.");
+
+                return (LSL_Key)UUID.Zero.ToString();
+            }
+
+            DataserverPlugin dataserverPlugin = (DataserverPlugin)m_ScriptEngine.GetScriptPlugin("Dataserver");
+            UUID tid = dataserverPlugin.RegisterRequest(m_host.UUID, m_itemID, uuid.ToString());
+
+            Util.FireAndForget(delegate(object o)
+            {
+                string name = "";
+                UserAccount info = World.UserAccountService.GetUserAccount(World.RegionInfo.ScopeID, userID);
+                if (info != null)
+                    name = info.Name;
+                dataserverPlugin.AddReply(uuid.ToString(),
+                    name, 100);
+            });
+
+            ScriptSleep(100);
+            return (LSL_Key)tid.ToString();
+        }
+
+        public LSL_Key llRequestDisplayName(LSL_Key uuid)
+        {
+            UUID userID = UUID.Zero;
+
+            if (!UUID.TryParse(uuid, out userID))
+            {
+                // => complain loudly, as specified by the LSL docs
+                ShoutError("Failed to parse uuid for avatar.");
+
+                return (LSL_Key)UUID.Zero.ToString();
+            }
+
+            DataserverPlugin dataserverPlugin = (DataserverPlugin)m_ScriptEngine.GetScriptPlugin("Dataserver");
+            UUID tid = dataserverPlugin.RegisterRequest(m_host.UUID, m_itemID, uuid.ToString());
+
+            Util.FireAndForget(delegate(object o)
+            {
+                string name = "";
+                IProfileConnector connector = Aurora.DataManager.DataManager.RequestPlugin<IProfileConnector>();
+                if (connector != null)
+                {
+                    IUserProfileInfo info = connector.GetUserProfile(userID);
+                    if (info != null)
+                        name = info.DisplayName;
+                }
+                dataserverPlugin.AddReply(uuid.ToString(),
+                    name, 100);
+            });
+
+            ScriptSleep(100);
+            return (LSL_Key)tid.ToString();
         }
 
         public LSL_Key llGetNotecardLine(string name, int line)
@@ -11761,6 +11984,20 @@ namespace Aurora.ScriptEngine.AuroraDotNetEngine.APIs
                 return new LSL_List();
 
             return GetLinkPrimitiveParams(obj, rules);
+        }
+
+        public void print(string str)
+        {
+            ScriptProtection.CheckThreatLevel(ThreatLevel.Severe, "print", m_host, "LSL");
+
+            if (m_ScriptEngine.Config.GetBoolean("AllowosConsoleCommand", false))
+            {
+                if (World.Permissions.CanRunConsoleCommand(m_host.OwnerID))
+                {
+                    // yes, this is a real LSL function. See: http://wiki.secondlife.com/wiki/Print
+                    MainConsole.Instance.Output("LSL print():" + str, Level.Info);
+                }
+            }
         }
     }
 
