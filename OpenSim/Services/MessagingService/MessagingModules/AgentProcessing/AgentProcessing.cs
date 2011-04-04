@@ -577,33 +577,31 @@ namespace OpenSim.Services.MessagingService
                 INeighborService service = m_registry.RequestModuleInterface<INeighborService>();
                 if (service != null)
                 {
-                    List<GridRegion> NeighborsOfCurrentRegion = service.GetNeighbors(oldRegion);
-                    if (!NeighborsOfCurrentRegion.Contains(oldRegion))
-                        NeighborsOfCurrentRegion.Add(oldRegion);
-                    List<GridRegion> byebyeRegions = new List<GridRegion>();
+                    List<GridRegion> NeighborsOfOldRegion = service.GetNeighbors(oldRegion);
+                    List<GridRegion> NeighborsOfDestinationRegion = service.GetNeighbors(destination);
 
-                    m_log.InfoFormat(
-                        "[AgentProcessing]: Closing child agents. Checking {0} regions around {1}",
-                        NeighborsOfCurrentRegion.Count, oldRegion.RegionName);
-
-                    foreach (GridRegion region in NeighborsOfCurrentRegion)
+                    List<GridRegion> byebyeRegions = new List<GridRegion>(NeighborsOfOldRegion);
+                    byebyeRegions.Add(oldRegion); //Add the old region, because it might need closed too
+                    
+                    byebyeRegions.RemoveAll(delegate(GridRegion r)
                     {
-                        if (service.IsOutsideView(region.RegionLocX, destination.RegionLocX, region.RegionSizeX, destination.RegionSizeX, region.RegionLocY, destination.RegionLocY, region.RegionSizeY, destination.RegionSizeY))
-                        {
-                            byebyeRegions.Add(region);
-                        }
-                    }
+                        if (r.RegionID == destination.RegionID)
+                            return true;
+                        else if (NeighborsOfDestinationRegion.Contains(r))
+                            return true;
+                        return false;
+                    });
 
                     if (byebyeRegions.Count > 0)
                     {
-                        m_log.Info("[AgentProcessing]: Closing " + byebyeRegions.Count + " child agents");
+                        m_log.Info("[AgentProcessing]: Closing " + byebyeRegions.Count + " child agents around " + oldRegion.RegionName);
                         SendCloseChildAgent(AgentID, byebyeRegions);
                     }
                 }
             });
         }
 
-        protected void SendCloseChildAgent(UUID agentID, List<GridRegion> regionsToClose)
+        protected void SendCloseChildAgent(UUID agentID, IEnumerable<GridRegion> regionsToClose)
         {
             IClientCapsService clientCaps = m_registry.RequestModuleInterface<ICapsService>().GetClientCapsService(agentID);
             //Close all agents that we've been given regions for

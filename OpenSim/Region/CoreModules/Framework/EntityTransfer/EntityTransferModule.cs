@@ -525,12 +525,12 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 if (xOffset < 0)
                     pos.X += m_scene.RegionInfo.RegionSizeX;
                 else if (xOffset > 0)
-                    pos.X -= Constants.RegionSize;
+                    pos.X -= m_scene.RegionInfo.RegionSizeX;
 
                 if (yOffset < 0)
                     pos.Y += m_scene.RegionInfo.RegionSizeY;
                 else if (yOffset > 0)
-                    pos.Y -= Constants.RegionSize;
+                    pos.Y -= m_scene.RegionInfo.RegionSizeY;
 
                 //Make sure that they are within bounds (velocity can push it out of bounds)
                 if (pos.X < 0)
@@ -553,7 +553,8 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 agentCircuit.startpos = pos;
                 agentCircuit.child = false;
                 IAvatarAppearanceModule appearance = agent.RequestModuleInterface<IAvatarAppearanceModule> ();
-                agentCircuit.Appearance = appearance.Appearance;
+                if(appearance != null)
+                    agentCircuit.Appearance = appearance.Appearance;
 
                 IEventQueueService eq = agent.Scene.RequestModuleInterface<IEventQueueService>();
                 if (eq != null)
@@ -574,10 +575,11 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                         }
                     }
                 }
-                
+
                 agent.MakeChildAgent();
+                
                 //Revolution- We already were in this region... we don't need updates about the avatars we already know about, right?
-                // now we have a child agent in this region. Request and send all interesting data about (root) agents in the sim
+                // OLD: now we have a child agent in this region. Request and send all interesting data about (root) agents in the sim
                 //agent.SendOtherAgentsAvatarDataToMe();
                 //agent.SendOtherAgentsAppearanceToMe();
 

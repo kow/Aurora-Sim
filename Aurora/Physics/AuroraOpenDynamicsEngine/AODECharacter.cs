@@ -954,14 +954,6 @@ namespace Aurora.Physics.AuroraOpenDynamicsEngine
             else
                 m_iscollidingGround = false;
 
-            /*
-                        if (!m_alwaysRun)
-                            movementdivisor = _parent_scene.avMovementDivisorWalk * (_parent_scene.TimeDilation < 0.3 ? 0.6f : _parent_scene.TimeDilation); //Dynamically adjust it for slower sims
-                        else
-                            movementdivisor = _parent_scene.avMovementDivisorRun * (_parent_scene.TimeDilation < 0.3 ? 0.6f : _parent_scene.TimeDilation); //Dynamically adjust it for slower sims
-            */
-            // no dinamic messing here
-
             float movementmult = 1f;
             if (!m_alwaysRun)
                 movementmult /= _parent_scene.avMovementDivisorWalk;
@@ -1140,7 +1132,8 @@ namespace Aurora.Physics.AuroraOpenDynamicsEngine
 
             #region Under water physics
 
-            if (_parent_scene.AllowUnderwaterPhysics)
+            if (_parent_scene.AllowUnderwaterPhysics && (float)tempPos.X < _parent_scene.Region.RegionSizeX &&
+                (float)tempPos.Y < _parent_scene.Region.RegionSizeY)
             {
                 //Position plus height to av's shoulder (aprox) is just above water
                 if ((tempPos.Z + (CAPSULE_LENGTH / 3) - .25f) < _parent_scene.GetWaterLevel ((float)tempPos.X, (float)tempPos.Y))
@@ -1183,30 +1176,6 @@ namespace Aurora.Physics.AuroraOpenDynamicsEngine
             {
                 if (vec.X < 100000000 && vec.Y < 10000000 && vec.Z < 10000000) //Checks for crazy, going to NaN us values
                 {
-                    /*d.Vector3 veloc = d.BodyGetLinearVel (Body);
-                    //Stop us from fidgiting if we have a small velocity
-                    
-                                        if (_zeroFlag && ((Math.Abs(vec.X) < 0.09 && Math.Abs(vec.Y) < 0.09 && Math.Abs(vec.Z) < 0.03) && !flying && vec.Z != 0))
-                                        {
-                                            //m_log.Warn("Nulling Velo: " + vec.ToString());
-                                            vec = new Vector3(0, 0, 0);
-                                            d.BodySetLinearVel(Body, 0, 0, 0);
-                                        }
-
-                                        //Reduce insanely small values to 0 if the velocity isn't going up
-                                        if (Math.Abs(vec.Z) < 0.01 && veloc.Z < 0.6 && _zeroFlag)
-                                        {
-                                            if (veloc.Z != 0)
-                                            {
-                                                if (-veloc.Z > 0)
-                                                    vec.Z = 0;
-                                                else
-                                                    vec.Z = -veloc.Z * 5;
-                                                d.BodySetLinearVel(Body, veloc.X, veloc.Y, vec.Z);
-                                            }
-                                        }
-
-                    */
                     // round small values to zero. those possible are just errors
                     if (Math.Abs (vec.X) < 0.001)
                         vec.X = 0;
@@ -1215,8 +1184,10 @@ namespace Aurora.Physics.AuroraOpenDynamicsEngine
                     if (Math.Abs (vec.Z) < 0.001)
                         vec.Z = 0;
 
-
-                    doForce (vec);
+                    if (vec == Vector3.Zero) //if we arn't moving, STOP
+                        d.BodySetLinearVel(Body, vec.X, vec.Y, vec.Z);
+                    else
+                        doForce (vec);
 
                     //When falling, we keep going faster and faster, and eventually, the client blue screens (blue is all you see).
                     // The speed that does this is slightly higher than -30, so we cap it here so we never do that during falling.
@@ -1230,10 +1201,6 @@ namespace Aurora.Physics.AuroraOpenDynamicsEngine
                     _target_velocity *= _parent_scene.m_avDecayTime;
                     if (!_zeroFlag && _target_velocity.ApproxEquals (Vector3.Zero, _parent_scene.m_avStopDecaying))
                         _target_velocity = Vector3.Zero;
-
-                    //Check if the capsule is tilted before changing it
-                    //                    if (!_zeroFlag && !_parent_scene.IsAvCapsuleTilted)
-                    //                        AlignAvatarTiltWithCurrentDirectionOfMovement(vec);
                 }
                 else
                 {
@@ -1602,7 +1569,6 @@ namespace Aurora.Physics.AuroraOpenDynamicsEngine
                 d.BodyAddForce(Body, force.X, force.Y, force.Z);
                 //d.BodySetRotation(Body, ref m_StandUpRotation);
                 //standupStraight();
-
             }
         }
 

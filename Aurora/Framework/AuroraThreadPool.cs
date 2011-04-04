@@ -14,8 +14,8 @@ namespace Aurora.Framework
     {
         public ThreadPriority priority;
         public int Threads = 0;
-        public int InitialSleepTime = 5;
-        public int MaxSleepTime = 300;
+        public int InitialSleepTime = 10;
+        public int MaxSleepTime = 100;
     }
 
     public class AuroraThreadPool
@@ -38,7 +38,7 @@ namespace Aurora.Framework
             Sleeping = new int[m_info.Threads];
             nthreads = 0;
             nSleepingthreads = 0;
-            SleepTimeStep = m_info.MaxSleepTime / 3;
+            SleepTimeStep = m_info.MaxSleepTime;
                 // lets threads check for work a bit faster in case we have all sleeping and awake interrupt fails
             }
 
@@ -97,15 +97,15 @@ namespace Aurora.Framework
                         // so to release the thread sooner, like .net and mono can now do.
                         // This control loop whould then have to look for those delayed requests.
                         // UBIT
-                        bool Rest = false;
-                        OurSleepTime = 0;
+                        OurSleepTime = m_info.InitialSleepTime;
                         if (item != null)
-                            Rest = item.Invoke();
+                            item.Invoke();
                         else
-                            Rest = (o[0] as QueueItem2).Invoke(o[1]);
+                            (o[0] as QueueItem2).Invoke(o[1]);
                         }
                     }
                 catch { }
+                Thread.Sleep(OurSleepTime);
             }
         }
 
